@@ -1,17 +1,17 @@
 import { z } from 'zod';
 
-export const FilterResultSchema = z.object({
-  id: z.string(),
-  hide: z.boolean(),
-  rule: z.string().optional()
+export const IQResultSchema = z.object({
+  screenName: z.string(),
+  iq: z.number().min(50).max(200),
+  reasoning: z.string().optional()
 });
 
-export const BatchFilterResponseSchema = z.object({
-  results: z.array(FilterResultSchema)
+export const BatchIQResponseSchema = z.object({
+  results: z.array(IQResultSchema)
 });
 
-export interface TweetInput {
-  id: string;
-  text: string;
-  authorHandle: string;
+export interface UserIQInput {
+  screenName: string;
+  bio: string;
+  tweets: string[];
 }

@@ -1,18 +1,5 @@
-import { getSettings, saveSettings, addCustomRule, removeCustomRule } from '../lib/storage';
+import { getSettings, saveSettings } from '../lib/storage';
 import type { UserSettings } from '../types';
-
-const COUNTRIES = [
-  { name: 'United States', flag: '🇺🇸', value: 'United States' },
-  { name: 'India', flag: '🇮🇳', value: 'India' },
-  { name: 'Brazil', flag: '🇧🇷', value: 'Brazil' },
-  { name: 'Europe', flag: '🇪🇺', value: 'Europe' },
-  { name: 'Japan', flag: '🇯🇵', value: 'Japan' },
-  { name: 'United Kingdom', flag: '🇬🇧', value: 'United Kingdom' },
-  { name: 'Turkey', flag: '🇹🇷', value: 'Turkey' },
-  { name: 'Indonesia', flag: '🇮🇩', value: 'Indonesia' },
-  { name: 'Mexico', flag: '🇲🇽', value: 'Mexico' },
-  { name: 'Saudi Arabia', flag: '🇸🇦', value: 'Saudi Arabia' },
-];
 
 let currentSettings: UserSettings;
 
@@ -20,94 +7,52 @@ async function init() {
   currentSettings = await getSettings();
   renderUI();
   bindEvents();
+  loadStats();
 }
 
 function renderUI() {
   const enableToggle = document.getElementById('enableToggle') as HTMLInputElement;
   const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
+  const hideLowIQToggle = document.getElementById('hideLowIQ') as HTMLInputElement;
+  const thresholdSlider = document.getElementById('iqThreshold') as HTMLInputElement;
+  const thresholdValue = document.getElementById('thresholdValue')!;
 
   enableToggle.checked = currentSettings.enabled;
   apiKeyInput.value = currentSettings.apiKey;
-
-  renderCountryPicker();
-  renderChips();
+  hideLowIQToggle.checked = currentSettings.hideLowIQ;
+  thresholdSlider.value = (currentSettings.iqThreshold || 100).toString();
+  thresholdValue.textContent = (currentSettings.iqThreshold || 100).toString();
+  
+  // Update threshold color
+  thresholdValue.style.color = getIQColor(currentSettings.iqThreshold || 100);
 }
 
-function getActiveCountries(): Set<string> {
-  const countryRules = currentSettings.customRules.filter(r => r.type === 'country' && r.enabled);
-  return new Set(countryRules.map(r => r.value));
-}
-
-function renderCountryPicker() {
-  const container = document.getElementById('countryPicker')!;
-  container.innerHTML = '';
-
-  const activeCountries = getActiveCountries();
-
-  COUNTRIES.forEach(country => {
-    const btn = document.createElement('button');
-    btn.className = 'country-btn';
-    btn.dataset.country = country.value;
+async function loadStats() {
+  try {
+    const stats = await chrome.runtime.sendMessage({ type: 'GET_IQ_STATS' });
     
-    if (activeCountries.has(country.value)) {
-      btn.classList.add('active');
+    const avgIQEl = document.getElementById('avgIQ')!;
+    const countEl = document.getElementById('analyzedCount')!;
+    
+    if (stats?.average !== null && stats?.average !== undefined) {
+      avgIQEl.textContent = stats.average.toString();
+      avgIQEl.style.color = getIQColor(stats.average);
+    } else {
+      avgIQEl.textContent = '—';
     }
     
-    btn.innerHTML = `<span class="flag">${country.flag}</span>${country.name}`;
-    container.appendChild(btn);
-  });
-}
-
-function renderChips() {
-  const container = document.getElementById('customRules')!;
-  container.innerHTML = '';
-
-  const contentRules = currentSettings.customRules.filter(r => r.type === 'content');
-
-  if (contentRules.length === 0) {
-    container.innerHTML = '<div class="empty-state">No filters yet</div>';
-    return;
+    countEl.textContent = (stats?.count || 0).toString();
+  } catch {
+    // Stats not available
   }
-
-  contentRules.forEach(rule => {
-    const chip = document.createElement('div');
-    chip.className = 'chip';
-    chip.innerHTML = `
-      <span class="chip-text">${escapeHtml(rule.value)}</span>
-      <button class="chip-remove" data-id="${rule.id}" title="Remove">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 6 6 18"/>
-          <path d="m6 6 12 12"/>
-        </svg>
-      </button>
-    `;
-    container.appendChild(chip);
-  });
 }
 
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-function updateAddButton() {
-  const input = document.getElementById('ruleValue') as HTMLInputElement;
-  const button = document.getElementById('addRule') as HTMLButtonElement;
-  const plusIcon = document.getElementById('plusIcon')!;
-  const checkIcon = document.getElementById('checkIcon')!;
-
-  const hasValue = input.value.trim().length > 0;
-
-  button.disabled = !hasValue;
-
-  if (hasValue) {
-    plusIcon.classList.add('hidden');
-    checkIcon.classList.remove('hidden');
-  } else {
-    plusIcon.classList.remove('hidden');
-    checkIcon.classList.add('hidden');
-  }
+function getIQColor(iq: number): string {
+  if (iq < 85) return '#ef4444';
+  if (iq < 100) return '#f97316';
+  if (iq < 115) return '#22c55e';
+  if (iq < 130) return '#3b82f6';
+  return '#a855f7';
 }
 
 function notifySettingsUpdate() {
@@ -121,28 +66,16 @@ function notifySettingsUpdate() {
 async function save() {
   const enableToggle = document.getElementById('enableToggle') as HTMLInputElement;
   const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
+  const hideLowIQToggle = document.getElementById('hideLowIQ') as HTMLInputElement;
+  const thresholdSlider = document.getElementById('iqThreshold') as HTMLInputElement;
 
   await saveSettings({
     enabled: enableToggle.checked,
-    apiKey: apiKeyInput.value
+    apiKey: apiKeyInput.value,
+    hideLowIQ: hideLowIQToggle.checked,
+    iqThreshold: parseInt(thresholdSlider.value, 10)
   });
 
-  notifySettingsUpdate();
-}
-
-async function toggleCountry(countryValue: string) {
-  const existingRule = currentSettings.customRules.find(
-    r => r.type === 'country' && r.value === countryValue
-  );
-
-  if (existingRule) {
-    await removeCustomRule(existingRule.id);
-  } else {
-    await addCustomRule({ type: 'country', value: countryValue });
-  }
-
-  currentSettings = await getSettings();
-  renderCountryPicker();
   notifySettingsUpdate();
 }
 
@@ -160,51 +93,21 @@ function bindEvents() {
   });
 
   document.getElementById('enableToggle')?.addEventListener('change', save);
+  document.getElementById('hideLowIQ')?.addEventListener('change', save);
+
+  document.getElementById('iqThreshold')?.addEventListener('input', (e) => {
+    const value = (e.target as HTMLInputElement).value;
+    const thresholdValue = document.getElementById('thresholdValue')!;
+    thresholdValue.textContent = value;
+    thresholdValue.style.color = getIQColor(parseInt(value, 10));
+  });
+
+  document.getElementById('iqThreshold')?.addEventListener('change', save);
 
   let apiKeyTimeout: ReturnType<typeof setTimeout>;
   document.getElementById('apiKey')?.addEventListener('input', () => {
     clearTimeout(apiKeyTimeout);
     apiKeyTimeout = setTimeout(save, 800);
-  });
-
-  document.getElementById('countryPicker')?.addEventListener('click', async (e) => {
-    const btn = (e.target as HTMLElement).closest('.country-btn') as HTMLElement;
-    if (btn) {
-      await toggleCountry(btn.dataset.country!);
-    }
-  });
-
-  document.getElementById('ruleValue')?.addEventListener('input', updateAddButton);
-
-  document.getElementById('addRule')?.addEventListener('click', async () => {
-    const valueInput = document.getElementById('ruleValue') as HTMLInputElement;
-    const value = valueInput.value.trim();
-
-    if (value) {
-      await addCustomRule({ type: 'content', value });
-      currentSettings = await getSettings();
-      renderChips();
-      valueInput.value = '';
-      updateAddButton();
-    }
-  });
-
-  document.getElementById('ruleValue')?.addEventListener('keydown', async (e) => {
-    if (e.key === 'Enter') {
-      document.getElementById('addRule')?.click();
-    }
-  });
-
-  document.getElementById('customRules')?.addEventListener('click', async (e) => {
-    const target = e.target as HTMLElement;
-    const removeBtn = target.closest('.chip-remove') as HTMLElement;
-    
-    if (removeBtn) {
-      const id = removeBtn.dataset.id!;
-      await removeCustomRule(id);
-      currentSettings = await getSettings();
-      renderChips();
-    }
   });
 }
 

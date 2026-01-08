@@ -1,53 +1,55 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateObject } from 'ai';
-import type { FilterRule, FilterResult } from '../../types';
-import { BatchFilterResponseSchema, type TweetInput } from './types';
-import { buildFilterPrompt } from './prompt';
+import { BatchIQResponseSchema, type UserIQInput } from './types';
+import { buildIQPrompt } from './prompt';
 
-const MODEL = 'gemini-2.5-flash';
-const BATCH_SIZE = 8;
-const MAX_CONCURRENT = 4;
+const MODEL = 'gemini-2.0-flash';
+const BATCH_SIZE = 5;
+const MAX_CONCURRENT = 2;
 
-export async function filterTweets(
-  tweets: TweetInput[],
-  rules: FilterRule[],
+export interface IQAnalysisResult {
+  iq: number;
+  reasoning?: string;
+}
+
+export async function analyzeIQ(
+  users: UserIQInput[],
   apiKey: string
-): Promise<Map<string, FilterResult>> {
-  const results = new Map<string, FilterResult>();
+): Promise<Map<string, IQAnalysisResult>> {
+  const results = new Map<string, IQAnalysisResult>();
 
-  if (!apiKey || tweets.length === 0 || rules.length === 0) {
-    return results;
-  }
-
-  const activeRules = rules.filter(r => r.enabled && r.type === 'content');
-  if (activeRules.length === 0) {
+  if (!apiKey || users.length === 0) {
     return results;
   }
 
   const google = createGoogleGenerativeAI({ apiKey });
 
-  const batches: TweetInput[][] = [];
-  for (let i = 0; i < tweets.length; i += BATCH_SIZE) {
-    batches.push(tweets.slice(i, i + BATCH_SIZE));
+  const batches: UserIQInput[][] = [];
+  for (let i = 0; i < users.length; i += BATCH_SIZE) {
+    batches.push(users.slice(i, i + BATCH_SIZE));
   }
 
-  const processBatch = async (batch: TweetInput[]): Promise<void> => {
+  const processBatch = async (batch: UserIQInput[]): Promise<void> => {
+    console.log(`[x-iq] Analyzing IQ for ${batch.length} users: ${batch.map(u => u.screenName).join(', ')}`);
     try {
       const { object } = await generateObject({
         model: google(MODEL),
-        schema: BatchFilterResponseSchema,
-        prompt: buildFilterPrompt(batch, activeRules)
+        schema: BatchIQResponseSchema,
+        prompt: buildIQPrompt(batch)
       });
 
+      console.log(`[x-iq] Got IQ results:`, object.results.map(r => `@${r.screenName}: ${r.iq}`).join(', '));
+
       for (const item of object.results) {
-        results.set(item.id, {
-          shouldHide: item.hide,
-          matchedRule: item.rule
-        });
+        // Normalize screenName - remove @ prefix if present
+        const normalizedName = item.screenName.replace(/^@/, '');
+        results.set(normalizedName, { iq: item.iq, reasoning: item.reasoning });
       }
-    } catch {
-      for (const tweet of batch) {
-        results.set(tweet.id, { shouldHide: false });
+    } catch (e) {
+      console.error('[x-iq] LLM analysis error:', e);
+      // On error, assign default IQ of 100
+      for (const user of batch) {
+        results.set(user.screenName, { iq: 100 });
       }
     }
   };
@@ -66,4 +68,4 @@ export async function filterTweets(
   return results;
 }
 
-export type { TweetInput } from './types';
+export type { UserIQInput } from './types';

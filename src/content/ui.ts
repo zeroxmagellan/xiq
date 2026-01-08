@@ -1,90 +1,153 @@
-export type TweetState = 'pending' | 'approved' | 'hidden';
+export type IQState = 'idle' | 'loading' | 'done' | 'hidden';
+
+function getIQColor(iq: number): string {
+  if (iq < 85) return '#ef4444';      // Red
+  if (iq < 100) return '#f97316';     // Orange
+  if (iq < 115) return '#22c55e';     // Green
+  if (iq < 130) return '#3b82f6';     // Blue
+  return '#a855f7';                    // Purple (130+)
+}
+
+function getIQLabel(iq: number): string {
+  if (iq < 85) return 'Below Average';
+  if (iq < 100) return 'Average';
+  if (iq < 115) return 'Above Average';
+  if (iq < 130) return 'High';
+  return 'Genius';
+}
+
+export function getState(article: HTMLElement): IQState | null {
+  if (article.dataset.xiqLoading === 'true') return 'loading';
+  if (article.dataset.xiqDone === 'true') return 'done';
+  if (article.dataset.xiqHidden === 'true') return 'hidden';
+  return null;
+}
+
+export function setState(article: HTMLElement, state: IQState) {
+  article.dataset.xiqLoading = state === 'loading' ? 'true' : '';
+  article.dataset.xiqDone = state === 'done' ? 'true' : '';
+  article.dataset.xiqHidden = state === 'hidden' ? 'true' : '';
+}
+
+export function resetState(article: HTMLElement) {
+  article.dataset.xiqLoading = '';
+  article.dataset.xiqDone = '';
+  article.dataset.xiqHidden = '';
+  
+  // Remove existing badge and overlay
+  const existingBadge = article.querySelector('.xiq-badge');
+  if (existingBadge) {
+    existingBadge.remove();
+  }
+  
+  const wrapper = article.parentElement;
+  if (wrapper?.classList.contains('xiq-wrapper')) {
+    wrapper.querySelector('.xiq-hidden-overlay')?.remove();
+  }
+}
+
+export function setLoading(article: HTMLElement, avatarContainer: HTMLElement | null) {
+  setState(article, 'loading');
+  
+  if (!avatarContainer) return;
+  
+  // Check if badge already exists
+  if (avatarContainer.querySelector('.xiq-badge')) return;
+  
+  const badge = document.createElement('div');
+  badge.className = 'xiq-badge xiq-badge-loading';
+  badge.innerHTML = '<div class="xiq-spinner"></div>';
+  
+  avatarContainer.style.position = 'relative';
+  avatarContainer.appendChild(badge);
+}
+
+export function setIQBadge(article: HTMLElement, avatarContainer: HTMLElement | null, iq: number) {
+  setState(article, 'done');
+  
+  if (!avatarContainer) return;
+  
+  // Remove loading badge if exists
+  const existingBadge = avatarContainer.querySelector('.xiq-badge');
+  if (existingBadge) {
+    existingBadge.remove();
+  }
+  
+  const color = getIQColor(iq);
+  const label = getIQLabel(iq);
+  
+  const badge = document.createElement('div');
+  badge.className = 'xiq-badge xiq-badge-score';
+  badge.style.setProperty('--xiq-color', color);
+  badge.title = `IQ: ${iq} (${label})`;
+  badge.textContent = iq.toString();
+  
+  avatarContainer.style.position = 'relative';
+  avatarContainer.appendChild(badge);
+}
+
+export function setError(article: HTMLElement, avatarContainer: HTMLElement | null, reason?: string) {
+  setState(article, 'done');
+  
+  // Remove the loading spinner
+  if (avatarContainer) {
+    const spinner = avatarContainer.querySelector('.xiq-badge-loading');
+    if (spinner) {
+      spinner.remove();
+    }
+    
+    // Show error badge
+    const badge = document.createElement('div');
+    badge.className = 'xiq-badge xiq-badge-error';
+    badge.title = reason || 'Failed to analyze';
+    badge.textContent = '?';
+    avatarContainer.appendChild(badge);
+  }
+}
 
 function getWrapper(article: HTMLElement): HTMLElement {
   let wrapper = article.parentElement;
-  if (wrapper?.classList.contains('pimp-overlay-wrapper')) {
+  if (wrapper?.classList.contains('xiq-wrapper')) {
     return wrapper;
   }
 
   wrapper = document.createElement('div');
-  wrapper.className = 'pimp-overlay-wrapper';
+  wrapper.className = 'xiq-wrapper';
   article.parentElement?.insertBefore(wrapper, article);
   wrapper.appendChild(article);
   return wrapper;
 }
 
-function clearOverlays(article: HTMLElement) {
-  const wrapper = article.parentElement;
-  if (wrapper?.classList.contains('pimp-overlay-wrapper')) {
-    wrapper.querySelector('.pimp-spinner')?.remove();
-    wrapper.querySelector('.pimp-hidden-overlay')?.remove();
-  }
-}
-
-function setState(article: HTMLElement, state: TweetState) {
-  article.dataset.pimpPending = state === 'pending' ? 'true' : '';
-  article.dataset.pimpApproved = state === 'approved' ? 'true' : '';
-  article.dataset.pimpHidden = state === 'hidden' ? 'true' : '';
-}
-
-export function getState(article: HTMLElement): TweetState | null {
-  if (article.dataset.pimpPending === 'true') return 'pending';
-  if (article.dataset.pimpApproved === 'true') return 'approved';
-  if (article.dataset.pimpHidden === 'true') return 'hidden';
-  return null;
-}
-
-export function resetState(article: HTMLElement) {
-  setState(article, 'approved');
-  article.dataset.pimpPending = '';
-  article.dataset.pimpApproved = '';
-  article.dataset.pimpHidden = '';
-  clearOverlays(article);
-}
-
-export function setPending(article: HTMLElement) {
-  setState(article, 'pending');
-  const wrapper = getWrapper(article);
-
-  if (!wrapper.querySelector('.pimp-spinner')) {
-    const spinner = document.createElement('div');
-    spinner.className = 'pimp-spinner';
-    spinner.innerHTML = '<div class="pimp-spinner-ring"></div>';
-    wrapper.appendChild(spinner);
-  }
-}
-
-export function setApproved(article: HTMLElement) {
-  setState(article, 'approved');
-  clearOverlays(article);
-}
-
-export function setBlocked(article: HTMLElement, reason: string) {
+export function setHidden(article: HTMLElement, iq: number, reasoning?: string) {
   setState(article, 'hidden');
   const wrapper = getWrapper(article);
-  clearOverlays(article);
+  
+  // Remove any existing overlay
+  wrapper.querySelector('.xiq-hidden-overlay')?.remove();
 
   const overlay = document.createElement('div');
-  overlay.className = 'pimp-hidden-overlay';
+  overlay.className = 'xiq-hidden-overlay';
 
   const card = document.createElement('div');
-  card.className = 'pimp-hidden-card';
+  card.className = 'xiq-hidden-card';
 
   const title = document.createElement('div');
-  title.className = 'pimp-hidden-title';
-  title.textContent = 'Hidden';
+  title.className = 'xiq-hidden-title';
+  title.innerHTML = `<span class="xiq-hidden-iq" style="color: ${getIQColor(iq)}">${iq}</span> IQ`;
 
   const reasonEl = document.createElement('div');
-  reasonEl.className = 'pimp-hidden-reason';
-  reasonEl.textContent = reason;
+  reasonEl.className = 'xiq-hidden-reason';
+  reasonEl.textContent = reasoning || 'Below threshold';
 
   const btn = document.createElement('button');
-  btn.className = 'pimp-show-btn';
+  btn.className = 'xiq-reveal-btn';
   btn.textContent = 'Reveal';
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
     e.preventDefault();
-    setApproved(article);
+    overlay.remove();
+    setState(article, 'done');
+    article.dataset.xiqHidden = '';
   });
 
   card.appendChild(title);
@@ -93,5 +156,4 @@ export function setBlocked(article: HTMLElement, reason: string) {
   overlay.appendChild(card);
   wrapper.appendChild(overlay);
 }
-
 

@@ -21,37 +21,51 @@ function recordRequest(): void {
   requestTimestamps.push(Date.now());
 }
 
-export async function request<T>(endpoint: string, variables: Record<string, unknown>): Promise<T | null> {
+export async function request<T>(
+  endpoint: string, 
+  variables: Record<string, unknown>,
+  features?: Record<string, boolean>
+): Promise<T | null> {
   if (!canMakeRequest()) {
+    console.warn('[x-iq] Rate limited, skipping request');
     return null;
   }
 
   const csrfToken = getCsrfToken();
   if (!csrfToken) {
+    console.warn('[x-iq] No CSRF token found');
     return null;
   }
 
-  const url = `${BASE_URL}/${endpoint}?variables=${encodeURIComponent(JSON.stringify(variables))}`;
+  let url = `${BASE_URL}/${endpoint}?variables=${encodeURIComponent(JSON.stringify(variables))}`;
+  
+  if (features) {
+    url += `&features=${encodeURIComponent(JSON.stringify(features))}`;
+  }
 
   recordRequest();
 
-  const response = await fetch(url, {
-    credentials: 'include',
-    headers: {
-      'accept': '*/*',
-      'authorization': `Bearer ${BEARER_TOKEN}`,
-      'x-csrf-token': csrfToken,
-      'x-twitter-active-user': 'yes',
-      'x-twitter-auth-type': 'OAuth2Session',
-      'x-twitter-client-language': 'en',
-    }
-  });
+  try {
+    const response = await fetch(url, {
+      credentials: 'include',
+      headers: {
+        'accept': '*/*',
+        'authorization': `Bearer ${BEARER_TOKEN}`,
+        'x-csrf-token': csrfToken,
+        'x-twitter-active-user': 'yes',
+        'x-twitter-auth-type': 'OAuth2Session',
+        'x-twitter-client-language': 'en',
+      }
+    });
 
-  if (!response.ok) {
+    if (!response.ok) {
+      console.warn(`[x-iq] API error: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    return response.json();
+  } catch (e) {
+    console.error('[x-iq] Fetch error:', e);
     return null;
   }
-
-  return response.json();
 }
-
-

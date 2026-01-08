@@ -1,49 +1,44 @@
-![logo](icons/icon-48.png)
+# x-iq
 
-[![Twitter Follow](https://img.shields.io/twitter/follow/zeroxpunk?style=social)](https://x.com/zeroxpunk)
+a chrome extension that displays ai-estimated iq scores for users on your x timeline.
 
-# Pimp my Timeline
+## how it works
 
-![screenshot](public/docs/screenshot.png)
+x-iq analyzes each user's bio and recent tweets using gemini to estimate their iq. the score appears as a color-coded badge near the user's avatar.
 
-A simple Chrome extension, which helps you to get rid of garbage in your x.com Timeline.
+the prompt is tuned for crypto twitter — it ignores the usual ct slang and aesthetics, focusing on actual reasoning quality, protocol understanding, and independent thinking.
 
-### Features
+## iq color scale
 
-- **Country filtering** — Hide tweets from users based on their account country;
-- **Content filtering** — prompt custom content filtering rules. Powered by Gemini;
+- red — below 85
+- orange — 85-99
+- green — 100-114
+- blue — 115-129
+- purple — 130+
 
-### Setup
+## features
 
-First you need to obtain [Gemini API key](https://aistudio.google.com/apikey).
+- iq badges next to avatars
+- hide low iq toggle with adjustable threshold
+- caches results so each user is only analyzed once
+- shows average iq of your timeline in the popup
 
-Then clone the repo
+## setup
 
-```bash 
-git clone https://github.com/zeroxpunk/pimp-my-timeline.git
-```
+1. get a [gemini api key](https://aistudio.google.com/apikey)
 
-Then build from sources:
+2. clone and build:
 
 ```bash
+git clone <repo-url>
+cd xiq
 npm install
 npm run build
 ```
 
-And finally run the extension in your browser:
+3. load in chrome:
+   - go to `chrome://extensions/`
+   - enable developer mode
+   - click "load unpacked" and select the `dist` folder
 
-1. Open `chrome://extensions/`
-2. Enable **Developer mode**
-3. Click **Load unpacked** → select `dist` folder
-
-## Contributing
-
-Everyone's welcome. Feel free to fork and open PRs.
-
-### Community Prompts
-
-Check out the `prompts/` folder for ready-to-use filter rules:
-
-- `hide-ai-slop.txt` — filters generic AI-generated content
-- `hide-attention-farmers.txt` — filters engagement bait and rage farming
-
+4. click the extension icon, enter your api key, and enable it.

@@ -1,8 +1,40 @@
-const RESERVED_PATHS = ['home', 'explore', 'notifications', 'messages', 'i'];
+const RESERVED_PATHS = ['home', 'explore', 'notifications', 'messages', 'i', 'search', 'settings', 'compose'];
 
 export function isHomeFeed(): boolean {
   const path = window.location.pathname;
   return path === '/home' || path === '/';
+}
+
+export function extractScreenName(article: HTMLElement): string | null {
+  // Look for the user link in the tweet
+  const userLinks = article.querySelectorAll('a[href^="/"][role="link"]');
+  
+  for (const link of userLinks) {
+    const href = (link as HTMLAnchorElement).href;
+    const match = href.match(/x\.com\/([^/?]+)/);
+    
+    if (match && !RESERVED_PATHS.includes(match[1].toLowerCase())) {
+      return match[1];
+    }
+  }
+
+  return null;
+}
+
+export function findAvatarContainer(article: HTMLElement): HTMLElement | null {
+  // Find the avatar image container
+  const avatar = article.querySelector('[data-testid="Tweet-User-Avatar"]');
+  if (avatar) {
+    return avatar as HTMLElement;
+  }
+
+  // Fallback: look for the avatar link
+  const avatarLink = article.querySelector('a[href^="/"][role="link"] img[src*="profile_images"]');
+  if (avatarLink) {
+    return avatarLink.closest('a') as HTMLElement;
+  }
+
+  return null;
 }
 
 export function extractTweetId(article: HTMLElement): string | null {
@@ -14,41 +46,3 @@ export function extractTweetId(article: HTMLElement): string | null {
   }
   return null;
 }
-
-export function extractTweetText(article: HTMLElement): string {
-  const textEl = article.querySelector('[data-testid="tweetText"]');
-  return textEl?.textContent?.trim() || '';
-}
-
-export function extractScreenName(article: HTMLElement): string | null {
-  const userLink = article.querySelector('a[href^="/"][role="link"]');
-  if (!userLink) return null;
-
-  const href = (userLink as HTMLAnchorElement).href;
-  const match = href.match(/x\.com\/([^/?]+)/);
-
-  if (match && !RESERVED_PATHS.includes(match[1])) {
-    return match[1];
-  }
-
-  return null;
-}
-
-export function hashText(text: string): string {
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) {
-    const char = text.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return hash.toString(36);
-}
-
-export function hasMedia(article: HTMLElement): boolean {
-  return !!(
-    article.querySelector('[data-testid="tweetPhoto"]') ||
-    article.querySelector('[data-testid="videoPlayer"]') ||
-    article.querySelector('[data-testid="card.wrapper"]')
-  );
-}
-

@@ -1,6 +1,6 @@
-import { getSettings } from '../lib/storage';
-import { filterTweets, type TweetInput } from '../lib/ai';
-import type { Message } from '../types';
+import { getSettings, saveIQResults, getIQStats } from '../lib/storage';
+import { analyzeIQ, type UserIQInput, type IQAnalysisResult } from '../lib/ai';
+import type { Message, IQResult } from '../types';
 
 chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) => {
   handleMessage(message).then(sendResponse);
@@ -13,21 +13,47 @@ async function handleMessage(message: Message) {
       return await getSettings();
     }
 
-    case 'FILTER_TWEETS': {
+    case 'SAVE_SETTINGS': {
+      return await getSettings();
+    }
+
+    case 'GET_IQ_STATS': {
+      return await getIQStats();
+    }
+
+    case 'ANALYZE_IQ': {
       const settings = await getSettings();
-      if (!settings.enabled || !settings.apiKey || settings.customRules.length === 0) {
+      if (!settings.enabled || !settings.apiKey) {
         return { results: {} };
       }
 
-      const payload = message.payload as { tweets: TweetInput[] };
-
-      const results = await filterTweets(
-        payload.tweets,
-        settings.customRules,
+      const payload = message.payload as { users: UserIQInput[] };
+      
+      const iqResults = await analyzeIQ(
+        payload.users,
         settings.apiKey
       );
 
-      return { results: Object.fromEntries(results) };
+      // Save results to cache
+      const now = Date.now();
+      const resultsToSave: IQResult[] = Array.from(iqResults.entries()).map(
+        ([screenName, result]) => ({
+          screenName,
+          iq: result.iq,
+          reasoning: result.reasoning,
+          analyzedAt: now
+        })
+      );
+
+      await saveIQResults(resultsToSave);
+
+      // Return results with threshold info
+      const resultMap: Record<string, IQAnalysisResult> = {};
+      for (const [screenName, result] of iqResults) {
+        resultMap[screenName] = result;
+      }
+
+      return { results: resultMap, threshold: settings.iqThreshold, hideLowIQ: settings.hideLowIQ };
     }
 
     default:

@@ -2,14 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=360">
-  <title>Pimp my Timeline</title>
+  <meta name="viewport" content="width=320">
+  <title>x-iq</title>
   <link rel="stylesheet" href="src/styles/popup.css">
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>Pimp my Timeline</h1>
+      <div class="brand">
+        <span class="brand-x">x</span><span class="brand-iq">-iq</span>
+      </div>
       <label class="x-toggle">
         <input type="checkbox" id="enableToggle">
         <span class="x-toggle-track"></span>
@@ -17,9 +19,9 @@
     </header>
 
     <div class="section">
-      <div class="section-label">API Key</div>
+      <div class="section-label">Gemini API Key</div>
       <div class="api-key-row">
-        <input type="password" id="apiKey" placeholder="Enter your Gemini API key">
+        <input type="password" id="apiKey" placeholder="Enter your API key">
         <button id="toggleApiKey" class="btn-icon" title="Toggle visibility">
           <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
@@ -35,29 +37,55 @@
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-label">Hide accounts from</div>
-      <div id="countryPicker" class="country-picker"></div>
-    </div>
-
-    <div class="section">
-      <div class="section-label">Hide content matching</div>
-      <div class="add-filter-row">
-        <input type="text" id="ruleValue" placeholder="Describe what to filter...">
-        <button id="addRule" class="btn-add" disabled>
-          <svg id="plusIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14"/>
-            <path d="M12 5v14"/>
-          </svg>
-          <svg id="checkIcon" class="hidden" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 6 9 17l-5-5"/>
-          </svg>
-        </button>
+    <div class="stats-section" id="statsSection">
+      <div class="stat-card">
+        <div class="stat-value" id="avgIQ">—</div>
+        <div class="stat-label">Average IQ</div>
       </div>
-      <div id="customRules" class="chips-container"></div>
+      <div class="stat-card">
+        <div class="stat-value" id="analyzedCount">0</div>
+        <div class="stat-label">Analyzed</div>
+      </div>
     </div>
 
-    <p class="hint">Filters only apply to your Home timeline</p>
+    <div class="section hide-section">
+      <div class="hide-row">
+        <div class="hide-label">
+          <span>Hide low IQ</span>
+          <span class="threshold-display">below <span id="thresholdValue">100</span></span>
+        </div>
+        <label class="x-toggle small">
+          <input type="checkbox" id="hideLowIQ">
+          <span class="x-toggle-track"></span>
+        </label>
+      </div>
+      <input type="range" id="iqThreshold" min="70" max="130" value="100" class="threshold-slider">
+    </div>
+
+    <div class="iq-scale">
+      <div class="scale-item">
+        <span class="scale-dot" style="background: #ef4444;"></span>
+        <span class="scale-label">&lt;85</span>
+      </div>
+      <div class="scale-item">
+        <span class="scale-dot" style="background: #f97316;"></span>
+        <span class="scale-label">85-99</span>
+      </div>
+      <div class="scale-item">
+        <span class="scale-dot" style="background: #22c55e;"></span>
+        <span class="scale-label">100-114</span>
+      </div>
+      <div class="scale-item">
+        <span class="scale-dot" style="background: #3b82f6;"></span>
+        <span class="scale-label">115-129</span>
+      </div>
+      <div class="scale-item">
+        <span class="scale-dot" style="background: #a855f7;"></span>
+        <span class="scale-label">130+</span>
+      </div>
+    </div>
+
+    <p class="hint">IQ badges appear next to avatars on your timeline</p>
   </div>
   <script type="module" src="src/popup/popup.ts"></script>
 </body>

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Pimp My Timeline",
-  "version": "0.1.0",
-  "description": "Get rid of retards in your x.com Timeline",
+  "name": "x-iq",
+  "version": "1.0.0",
+  "description": "Display AI-estimated IQ scores for users on your X timeline",
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -40,4 +40,3 @@
     }
   ]
 }
-

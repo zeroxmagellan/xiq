@@ -1,41 +1,39 @@
-export interface FilterRule {
-  id: string;
-  type: 'country' | 'content' | 'custom';
-  value: string;
-  enabled: boolean;
-}
-
 export interface UserSettings {
   enabled: boolean;
   apiKey: string;
-  hiddenCountries: string[];
-  customRules: FilterRule[];
-  showCountryFlags: boolean;
+  hideLowIQ: boolean;
+  iqThreshold: number;
 }
 
-export interface TweetData {
-  id: string;
-  text: string;
-  authorHandle: string;
-  authorName: string;
-  element: HTMLElement;
+export interface IQResult {
+  screenName: string;
+  iq: number;
+  reasoning?: string;
+  analyzedAt: number;
 }
 
-export interface FilterResult {
-  shouldHide: boolean;
-  matchedRule?: string;
-  detectedCountry?: string;
+export interface UserData {
+  screenName: string;
+  bio: string;
+  tweets: string[];
+}
+
+export interface IQAnalysisRequest {
+  users: UserData[];
+}
+
+export interface IQAnalysisResponse {
+  results: Record<string, number>;
 }
 
 export interface Message {
-  type: 'FILTER_TWEETS' | 'GET_SETTINGS' | 'SAVE_SETTINGS' | 'DETECT_COUNTRY';
+  type: 'ANALYZE_IQ' | 'GET_SETTINGS' | 'SAVE_SETTINGS' | 'GET_IQ_STATS';
   payload?: unknown;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
   enabled: true,
   apiKey: '',
-  hiddenCountries: [],
-  customRules: [],
-  showCountryFlags: true
+  hideLowIQ: false,
+  iqThreshold: 100
 };
